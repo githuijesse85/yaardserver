@@ -1,0 +1,23 @@
+# Health check (no auth needed)
+curl https://yaardserver.netlify.app/api/health
+
+# Test all connections (need admin token first)
+curl -X POST https://yaardserver.netlify.app/api/admin/login \
+  -H "Content-Type: application/json" \
+  -d '{"password":"YOUR_ADMIN_SECRET"}'
+
+# Use the token from above
+curl https://yaardserver.netlify.app/api/admin/test-connections \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+
+# Seed the database (10 users + 30 listings)
+curl -X POST https://yaardserver.netlify.app/api/admin/seed \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# To wipe and re-seed cleanly
+curl -X POST https://yaardserver.netlify.app/api/admin/seed \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"wipe": true}'

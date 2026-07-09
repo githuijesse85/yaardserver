@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Yaard Core Platform Control Console</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #07070a; --surface: #0f0f14; --card: #15151d; --border: #1e1e2a;
+    --accent: #ff2d55; --accent2: #8b5cf6; --text: #e5e5e5; --muted: #666;
+    --green: #22c55e; --yellow: #eab308; --red: #ef4444; --blue: #3b82f6;
+  }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px; -webkit-font-smoothing: antialiased;
+  }
+  
+  #loginScreen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 100; }
+  #loginBox { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 380px; text-align: center; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5); }
+  #loginBox h1 { font-size: 36px; font-weight: 900; letter-spacing: -1.5px; margin-bottom: 8px; color: #fff; }
+  #loginBox p { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  
+  .input { width: 100%; background: var(--surface); border: 1px solid var(--border); padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 14px; margin-bottom: 16px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+  .input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255, 45, 85, 0.2); }
+  .btn { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; font-size: 14px; transition: opacity 0.2s, background-color 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn:hover { opacity: 0.9; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-secondary { background: var(--border); color: var(--text); }
+  .btn-secondary:hover { background: rgba(255, 255, 255, 0.05); }
+  .btn-danger { background: var(--red); color: #fff; }
+  
+  #adminSuite { display: none; min-height: 100vh; }
+  sidebar { width: 250px; background: var(--surface); border-right: 1px solid var(--border); padding: 24px; display: flex; flex-direction: column; gap: 4px; position: fixed; top: 0; bottom: 0; left: 0; z-index: 50; }
+  .brand { font-size: 22px; font-weight: 900; padding: 12px; color: #fff; letter-spacing: -0.5px; margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
+  .brand span { background: var(--accent); font-size: 10px; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.5px; }
+  .nav-item { padding: 12px 16px; border-radius: 8px; color: var(--muted); text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s; }
+  .nav-item:hover, .nav-item.active { background: var(--card); color: #fff; }
+  .nav-item.active { border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding-left: 13px; }
+  
+  main { flex: 1; padding: 40px; max-width: 1400px; margin-left: 250px; width: calc(100% - 250px); }
+  .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; gap: 20px; }
+  .header-actions h2 { font-size: 24px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+  .view-pane { display: none; }
+  .view-pane.active { display: block; }
+  
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; margin-bottom: 32px; }
+  .metric-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  .metric-card h3 { font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; letter-spacing: 1px; font-weight: 700; }
+  .metric-card .val { font-size: 32px; font-weight: 800; color: #fff; margin-bottom: 6px; letter-spacing: -0.5px; }
+  .metric-card .sub { font-size: 12px; color: var(--muted); }
+  
+  .table-container { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+  table { width: 100%; border-collapse: collapse; text-align: left; }
+  th { background: var(--surface); padding: 16px 20px; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.75px; border-bottom: 1px solid var(--border); }
+  td { padding: 16px 20px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; line-height: 1.5; }
+  tr:last-child td { border: none; }
+  tr:hover td { background: rgba(255, 255, 255, 0.01); }
+  
+  .pill { display: inline-flex; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .pill-active, .pill-success, .pill-resolved { background: rgba(34, 197, 94, 0.1); color: var(--green); }
+  .pill-pending { background: rgba(234, 179, 8, 0.1); color: var(--yellow); }
+  .pill-failed, .pill-paused, .pill-rejected, .pill-dismissed { background: rgba(239, 68, 68, 0.1); color: var(--red); }
+  .pill-biz { background: rgba(139, 92, 246, 0.1); color: var(--accent2); }
+  
+  .action-row { display: flex; gap: 8px; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; width: auto; }
+  .search-bar { display: flex; gap: 12px; margin-bottom: 24px; }
+  .search-bar .input { margin-bottom: 0; max-width: 360px; }
+  
+  .modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 90; }
+  .modal.active { display: flex; }
+  .modal-box { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; width: 520px; max-width: 95%; box-shadow: 0 24px 48px rgba(0,0,0,0.4); max-height: 90vh; overflow-y: auto; }
+  .modal-box h2 { font-size: 22px; font-weight: 800; margin-bottom: 20px; color: #fff; letter-spacing: -0.5px; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 28px; }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border-left: 4px solid var(--accent); padding: 16px 24px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transform: translateY(150%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 200; font-weight: 500; }
+  .toast.active { transform: translateY(0); }
+</style>
+</head>
+<body>
+
+  <div id="loginScreen">
+    <div id="loginBox">
+      <h1>YAARD</h1>
+      <p>Core System Administrative Hub Console Matrix</p>
+      <div id="loginError" style="color:var(--red); font-size:12px; margin-bottom:16px; display:none; font-weight:600;"></div>
+      <input type="password" id="adminPass" class="input" placeholder="Administrative Entry Secret Key Passphrase" onkeydown="if(event.key==='Enter') attemptLogin()"/>
+      <button class="btn btn-primary" onclick="attemptLogin()">Authorize Session Handle</button>
+    </div>
+  </div>
+
+  <div id="adminSuite">
+    <sidebar>
+      <div class="brand">Yaard Core <span>Prod</span></div>
+      <div class="nav-item active" data-pane="overview" onclick="switchPane('overview')">Telemetry Overview</div>
+      <div class="nav-item" data-pane="users" onclick="switchPane('users'); loadUsers();">User Operations Matrix</div>
+      <div class="nav-item" data-pane="videos" onclick="switchPane('videos'); loadVideos();">Video Mapping Streams</div>
+      <div class="nav-item" data-pane="ads" onclick="switchPane('ads'); loadAds();">Promoted Ad Engines</div>
+      <div class="nav-item" data-pane="payments" onclick="switchPane('payments'); loadPayments();">Financial Settlements</div>
+      <div class="nav-item" data-pane="reports" onclick="switchPane('reports'); loadReports();">Trust & Safety Escalations</div>
+      <div class="nav-item" data-pane="system" onclick="switchPane('system')">Integration Operations</div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:auto;" onclick="terminateAdminSession()">Revoke Authorization</button>
+    </sidebar>
+
+    <main>
+      <div id="pane-overview" class="view-pane active">
+        <div class="header-actions"><h2>Ecosystem Integration Real-time Telemetry</h2></div>
+        <div class="metrics-grid">
+          <div class="metric-card"><h3>Total Indexed Accounts</h3><div class="val" id="m-users">0</div><div class="sub">Active network nodes</div></div>
+          <div class="metric-card"><h3>Velocity Index (24h)</h3><div class="val" id="m-newusers">0</div><div class="sub">New consumer entities</div></div>
+          <div class="metric-card"><h3>Total Feed Assets</h3><div class="val" id="m-videos">0</div><div class="sub">Replicated stream blocks</div></div>
+          <div class="metric-card"><h3>Global Impression Metric</h3><div class="val" id="m-views">0</div><div class="sub">Accumulated content iterations</div></div>
+          <div class="metric-card"><h3>Ecosystem Live Spend</h3><div class="val" id="m-spend">KES 0.00</div><div class="sub">Allocated promotion currency</div></div>
+          <div class="metric-card"><h3>Gross Revenue Sinks</h3><div class="val" id="m-revenue">KES 0.00</div><div class="sub">Paystack processing settlement</div></div>
+          <div class="metric-card"><h3>Active System Escalations</h3><div class="val" id="m-reports" style="color:var(--yellow)">0</div><div class="sub">Pending review operations</div></div>
+        </div>
+      </div>
+
+      <div id="pane-users" class="view-pane">
+        <div class="header-actions"><h2>User Accounts Operation Center</h2><button class="btn btn-primary" style="width:auto;" onclick="openUserModal()">Create Profile Vector</button></div>
+        <div class="search-bar">
+          <input type="text" id="userSearchInput" class="input" placeholder="Query Matrix Parameter Handle..."/>
+          <button class="btn btn-secondary" style="width:auto;" onclick="loadUsers()">Filter Cluster</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Identification Key / Handle</th><th>Communication Sink</th><th>Status Configurations</th><th>Action Options Vector</th></tr></thead>
+            <tbody id="usersTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="pane-videos" class="view-pane">
+        <div class="header-actions">
+          <h2>Video Architecture Feeds Layer</h2>
+          <div class="action-row">
+            <button class="btn btn-secondary btn-sm" onclick="loadVideos()">Refresh</button>
+          </div>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="videoSearchInput" class="input" placeholder="Search video title, creator, status..." onkeydown="if(event.key==='Enter') loadVideos()"/>
+          <button class="btn btn-secondary btn-sm" style="width:auto;" onclick="loadVideos()">Search</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Video / Creator</th><th>Price</th><th>Views</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody id="videosTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="pane-ads" class="view-pane">
+        <div class="header-actions">
+          <h2>Deployment Ad Campaigns Engine</h2>
+          <div class="action-row">
+            <button class="btn btn-primary btn-sm" onclick="openAdModal()">Create Ad</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadAds()">Refresh</button>
+          </div>
+        </div>
+        <div class="search-bar" style="flex-wrap:wrap; gap:12px;">
+          <input type="text" id="adSearchInput" class="input" placeholder="Search ad title, owner handle..." onkeydown="if(event.key==='Enter') loadAds()"/>
+          <select id="adStatusFilter" class="input" style="max-width:180px;">
+            <option value="">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="active">Active</option>
+            <option value="paused">Paused</option>
+            <option value="completed">Completed</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" style="width:auto;" onclick="loadAds()">Search</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Campaign / Owner</th><th>Budget</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody id="adsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="pane-payments" class="view-pane">
+        <div class="header-actions">
+          <h2>Financial Settlement Ledger Ingest</h2>
+          <div class="action-row">
+            <button class="btn btn-secondary btn-sm" onclick="loadPayments()">Refresh</button>
+          </div>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="paymentSearchInput" class="input" placeholder="Search payment reference, user, email..." onkeydown="if(event.key==='Enter') loadPayments()"/>
+          <button class="btn btn-secondary btn-sm" style="width:auto;" onclick="loadPayments()">Search</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Reference</th><th>User</th><th>Amount</th><th>Status</th><th>Created</th></tr></thead>
+            <tbody id="paymentsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="pane-reports" class="view-pane">
+        <div class="header-actions">
+          <h2>Trust & Safety Policy Compliance Moderation</h2>
+          <div class="action-row">
+            <button class="btn btn-secondary btn-sm" onclick="loadReports()">Refresh</button>
+          </div>
+        </div>
+        <div class="search-bar" style="flex-wrap:wrap; gap:12px;">
+          <input type="text" id="reportSearchInput" class="input" placeholder="Search report reason, reporter, target title..." onkeydown="if(event.key==='Enter') loadReports()"/>
+          <select id="reportStatusFilter" class="input" style="max-width:180px;">
+            <option value="">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="resolved">Resolved</option>
+            <option value="resolved_deleted">Resolved Deleted</option>
+            <option value="resolved_warned">Resolved Warned</option>
+            <option value="resolved_emailed">Resolved Emailed</option>
+            <option value="dismissed">Dismissed</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" style="width:auto;" onclick="loadReports()">Search</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Report ID</th><th>Target / Owner</th><th>Reason</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody id="reportsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="pane-system" class="view-pane">
+        <div class="header-actions"><h2>Ecosystem Core Diagnostic Architecture</h2></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:32px;">
+          <div style="background:var(--card); border:1px solid var(--border); padding:24px; border-radius:12px;">
+            <h3 style="margin-bottom:16px; color:#fff;">Infrastructure Integration Pulse Diagnostic Telemetry</h3>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-secondary btn-sm" onclick="testDB()">Test Database</button>
+                <button class="btn btn-secondary btn-sm" onclick="testCloudinaryPing()">Test Cloudinary Ping</button>
+                <button class="btn btn-secondary btn-sm" onclick="testCloudinarySignature()">Test Cloudinary Signature</button>
+                <button class="btn btn-secondary btn-sm" onclick="testCloudinaryUpload()">Test Cloudinary Upload</button>
+                <button class="btn btn-secondary btn-sm" onclick="testPaystack()">Test Payments</button>
+                <button class="btn btn-secondary btn-sm" onclick="testEmail()">Test Email/SMTP</button>
+                <button class="btn btn-primary btn-sm" onclick="loadSystemConfig()">Load Update Config</button>
+              </div>
+              <pre id="healthEngineOutput" style="margin-top:16px; background:var(--surface); padding:16px; border-radius:8px; font-family:monospace; color:var(--green); border:1px solid var(--border); overflow-x:auto;">[SYSTEM INACTIVE]: Dispatched verification query missing authentication instruction loop...</pre>
+          </div>
+          <div style="background:var(--card); border:1px solid var(--border); padding:24px; border-radius:12px;">
+            <h3 style="margin-bottom:12px; color:var(--accent);">System Update Manager</h3>
+            <p style="color:var(--muted); font-size:13px; margin-bottom:20px; line-height:1.5;">Use this panel to publish or preview a runtime update configuration for client-side version checks.</p>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+              <input type="text" id="systemVersionInput" class="input" placeholder="Latest Version e.g. 4.6.2" />
+              <input type="number" id="systemCodeInput" class="input" placeholder="Version Code" />
+            </div>
+            <input type="text" id="systemUpdateUrlInput" class="input" placeholder="Update URL" style="margin-bottom:12px;" />
+            <textarea id="systemUpdateMessageInput" class="input" placeholder="Update message" style="height:70px; resize:none; margin-bottom:12px;"></textarea>
+            <textarea id="systemReleaseNotesInput" class="input" placeholder="Release notes" style="height:90px; resize:none; margin-bottom:12px;"></textarea>
+            <label style="display:flex; align-items:center; gap:10px; margin-bottom:16px; color:#fff;"><input type="checkbox" id="systemForceUpdateInput" style="accent-color:var(--accent); width:18px; height:18px;"/> Force update on clients</label>
+            <label style="display:flex; align-items:center; gap:10px; margin-bottom:16px; color:#fff;"><input type="checkbox" id="systemMaintenanceModeInput" style="accent-color:var(--yellow); width:18px; height:18px;"/> Maintenance mode enabled</label>
+            <button class="btn btn-primary" style="width:100%; margin-bottom:12px;" onclick="pushSystemConfig()">Push System Update</button>
+            <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px; padding:16px; font-size:12px; color:var(--text);">
+              <strong>Current config preview:</strong>
+              <pre id="systemConfigOutput" style="margin-top:12px; overflow-x:auto; max-height:260px; white-space:pre-wrap; word-break:break-word; color:var(--muted);"></pre>
+              <div id="systemPathInfo" style="margin-top:12px; color:var(--muted); font-size:11px; white-space:pre-wrap;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="userActionModal" class="modal">
+    <div class="modal-box">
+      <h2 id="modalUserTitle">Register Profile Cluster Node</h2>
+      <input type="hidden" id="formUserId"/>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Unique Identifier Slug (Username)</label>
+      <input type="text" id="formUsername" class="input" placeholder="e.g. buyer_alpha"/>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Communication Routing Endpoint (Email Address)</label>
+      <input type="email" id="formEmail" class="input" placeholder="name@domain.com"/>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Secret Encryption Hash Seed Phrase (Password)</label>
+      <input type="password" id="formPassword" class="input" placeholder="Leave unassigned to withhold modifier updates"/>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Display Identity Configuration Label</label>
+      <input type="text" id="formDisplayName" class="input" placeholder="Full Name/Business Name"/>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Direct Line Connection Vector (Phone Properties)</label>
+      <input type="text" id="formPhone" class="input" placeholder="+254..."/>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">WhatsApp Linkage Properties</label>
+      <input type="text" id="formWhatsapp" class="input" placeholder="+254..."/>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Digital Web Ecosystem Domain</label>
+      <input type="text" id="formWebsite" class="input" placeholder="https://..."/>
+      <div style="background:var(--surface); padding:16px; border-radius:8px; border:1px solid var(--border); margin-top:8px; display:flex; flex-direction:column; gap:12px;">
+        <label style="display:flex; align-items:center; gap:10px; color:var(--text); font-size:13px; cursor:pointer;"><input type="checkbox" id="formIsVerified" style="accent-color:var(--accent);"/> Apply Verified Blue Badge Verification Node</label>
+        <label style="display:flex; align-items:center; gap:10px; color:var(--text); font-size:13px; cursor:pointer;"><input type="checkbox" id="formIsBusiness" style="accent-color:var(--accent);"/> Enable Commercial Enterprise Business Account Node</label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeUserModal()">Discard Manifest</button>
+        <button class="btn btn-primary btn-sm" onclick="saveUserForm()">Commit Modifications to Core Pipeline</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="videoActionModal" class="modal">
+    <div class="modal-box">
+      <h2>Adjust Structural Stream Attributes</h2>
+      <input type="hidden" id="formVideoId"/>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Listing Header Asset Title</label>
+      <input type="text" id="formVideoTitle" class="input"/>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Detailed Content Specifications Descriptor</label>
+      <textarea id="formVideoDesc" class="input" style="height:80px; resize:none;"></textarea>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div>
+          <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Financial Marketplace Value Evaluation</label>
+          <input type="number" id="formVideoPrice" class="input"/>
+        </div>
+        <div>
+          <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Currency ISO Token</label>
+          <input type="text" id="formVideoCurrency" class="input" value="KES"/>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div>
+          <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Location Region Cluster Node</label>
+          <input type="text" id="formVideoCity" class="input" placeholder="Nairobi"/>
+        </div>
+        <div>
+          <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Product Condition Grade</label>
+          <select id="formVideoCondition" class="input" style="background:var(--surface); color:#fff;">
+            <option value="New">New</option><option value="Like New">Like New</option><option value="Good">Good</option><option value="Fair">Fair</option><option value="For Parts">For Parts</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div>
+          <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Manufacturer Vector Brand</label>
+          <input type="text" id="formVideoBrand" class="input"/>
+        </div>
+        <div>
+          <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Ecosystem Structural Model Identifier</label>
+          <input type="text" id="formVideoModel" class="input"/>
+        </div>
+      </div>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">System Deployment Life-cycle Status</label>
+      <select id="formVideoStatus" class="input" style="background:var(--surface); color:#fff;">
+        <option value="active">Active Production Feed Block</option><option value="draft">Draft Execution Staging</option><option value="archived">Archived Historical Node</option><option value="deleted">Flagged Ecosystem Purge</option>
+      </select>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeVideoModal()">Discard Modifications</button>
+        <button class="btn btn-primary btn-sm" onclick="saveVideoForm()">Commit Mapping State</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="adActionModal" class="modal">
+    <div class="modal-box">
+      <h2>Inject Promoted Promotion Component</h2>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Advertiser Identification Key Account (User ID)</label>
+      <input type="text" id="formAdUserId" class="input" placeholder="UUID format required"/>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Linked Content Vector (Video ID - Optional)</label>
+      <input type="text" id="formAdVideoId" class="input" placeholder="Leave empty for generic external matrix redirects"/>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Campaign Header Context String</label>
+      <input type="text" id="formAdTitle" class="input"/>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Marketing Promotion Description String</label>
+      <textarea id="formAdDesc" class="input" style="height:60px; resize:none;"></textarea>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">Allocated Deployment Operational Budget (KES)</label>
+      <input type="number" id="formAdBudget" class="input" value="5000"/>
+      <label style="font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; display:block; margin-bottom:6px;">External Redirection Protocol Sink (Target URL)</label>
+      <input type="text" id="formAdTargetUrl" class="input" value="https://"/>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeAdModal()">Cancel Transmission</button>
+        <button class="btn btn-primary btn-sm" onclick="submitAdForm()">Launch Promotion Stream Node</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastNotification" class="toast">Ecosystem baseline operational synchronization success event tracking.</div>
+
+  <script>
+    let activeToken = localStorage.getItem('yaard_admin_token') || null;
+    const gatewayEndpoint = '/api/admin';
+
+    async function executeSecureFetch(route, options = {}) {
+      options.headers = options.headers || {};
+      options.headers['Accept'] = 'application/json';
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes((options.method || 'GET').toUpperCase())) {
+        options.headers['Content-Type'] = 'application/json';
+      }
+      options.credentials = 'same-origin';
+      if (activeToken) {
+        options.headers['Authorization'] = `Bearer ${activeToken}`;
+      }
+      try {
+        const targetUrl = route.startsWith('/api/') || route.startsWith('http')
+          ? route
+          : `${gatewayEndpoint}${route}`;
+        const response = await fetch(targetUrl, options);
+          let jsonResult;
+
+          try {
+            jsonResult = await response.json();
+          } catch (parseError) {
+            throw new Error("Invalid response from server (possible HTML fallback or crash)");
+          }
+
+          // Normalize API wrapper { success: true, data: {...} } to return the inner data object
+          if (jsonResult && typeof jsonResult === 'object' && jsonResult.success && jsonResult.data !== undefined) {
+            jsonResult = jsonResult.data;
+          }
+
+        if (!response.ok) {
+          // FIX: Only terminate the session if a PROTECTED route returns 401.
+          // If the /login route returns 401, it's just a bad password, do not wipe everything.
+          if (response.status === 401 && route !== '/login') {
+            terminateAdminSession();
+            throw new Error(jsonResult.error || "Unauthorized session. Please log in again.");
+          }
+          throw new Error(jsonResult.error || `System Error Frame: ${response.status}`);
+        }
+        return { ok: true, data: jsonResult };
+      } catch (err) {
+        // Prevent toast spamming if we are just failing a background check
+        if (route !== '/dashboard' || !activeToken) {
+          triggerNotice(err.message, true);
+        }
+        return { ok: false, error: err.message };
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      if (activeToken) {
+        const sessionCheck = await executeSecureFetch('/verify');
+        if (!sessionCheck.ok) {
+          terminateAdminSession();
+          return;
+        }
+
+        const dashboardCheck = await executeSecureFetch('/dashboard');
+        if (!dashboardCheck.ok) {
+          terminateAdminSession();
+          return;
+        }
+
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('adminSuite').style.display = 'flex';
+        refreshAllDashboardTelemetry();
+        // Try to connect to realtime WS relay if available
+        initRealtimeClient();
+      }
+    });
+
+    // Realtime connection to local WS relay (optional). Run tools/realtime-server.js locally.
+    /**
+    let realtimeSocket;
+    function initRealtimeClient() {
+      try {
+        const url = (location.hostname === 'localhost') ? 'ws://localhost:6789' : null;
+        if (!url) return;
+        realtimeSocket = new WebSocket(url);
+        realtimeSocket.onopen = () => console.log('Realtime socket connected');
+        realtimeSocket.onmessage = (ev) => {
+          try {
+            const msg = JSON.parse(ev.data);
+            if (msg.type === 'user_update') {
+              // Refresh users list when user changes occur
+              if (document.querySelector('#pane-users').classList.contains('active')) loadUsers();
+            }
+            if (msg.type === 'cashback') {
+              triggerNotice(`Cashback issued: ${msg.amount} to ${msg.user_id}`);
+              // refresh payments view if open
+              if (document.querySelector('#pane-payments').classList.contains('active')) loadPayments();
+            }
+          } catch (e) { console.warn('Realtime parse', e.message); }
+        };
+        realtimeSocket.onclose = () => console.log('Realtime socket closed');
+      } catch (e) { console.warn('Realtime init failed', e.message); }
+    }*/
+
+    function triggerNotice(msg, isError = false) {
+      const element = document.getElementById('toastNotification');
+      element.textContent = msg;
+      element.style.borderLeftColor = isError ? 'var(--red)' : 'var(--accent)';
+      element.classList.add('active');
+      setTimeout(() => element.classList.remove('active'), 4000);
+    }
+
+    async function attemptLogin() {
+      const codePhrase = document.getElementById('adminPass').value;
+      const result = await executeSecureFetch('/login', { method: 'POST', body: JSON.stringify({ password: codePhrase }) });
+      if (result.ok) {
+        activeToken = result.data.token;
+        localStorage.setItem('yaard_admin_token', activeToken);
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('adminSuite').style.display = 'flex';
+        document.getElementById('loginError').style.display = 'none';
+        refreshAllDashboardTelemetry();
+      } else {
+        const errBox = document.getElementById('loginError');
+        errBox.textContent = result.error;
+        errBox.style.display = 'block';
+      }
+    }
+
+    function terminateAdminSession() {
+      activeToken = null;
+      localStorage.removeItem('yaard_admin_token');
+      document.getElementById('adminSuite').style.display = 'none';
+      document.getElementById('loginScreen').style.display = 'flex';
+      document.getElementById('adminPass').value = '';
+    }
+
+    function switchPane(targetPaneId) {
+      document.querySelectorAll('.view-pane').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      document.getElementById(`pane-${targetPaneId}`).classList.add('active');
+      document.querySelector(`[data-pane="${targetPaneId}"]`).classList.add('active');
+      if (targetPaneId === 'overview') refreshAllDashboardTelemetry();
+      if (targetPaneId === 'system') loadSystemConfig();
+    }
+
+    async function refreshAllDashboardTelemetry() {
+      const result = await executeSecureFetch('/dashboard');
+      if (result.ok) {
+        const met = result.data.metrics;
+        document.getElementById('m-users').textContent = Number(met.total_users).toLocaleString();
+        document.getElementById('m-newusers').textContent = Number(met.new_users_24h).toLocaleString();
+        document.getElementById('m-videos').textContent = Number(met.total_videos).toLocaleString();
+        document.getElementById('m-views').textContent = Number(met.total_views).toLocaleString();
+        document.getElementById('m-spend').textContent = `KES ${Number(met.total_ad_spend).toFixed(2)}`;
+        document.getElementById('m-revenue').textContent = `KES ${Number(met.total_revenue).toFixed(2)}`;
+        document.getElementById('m-reports').textContent = Number(met.pending_reports).toLocaleString();
+      }
+    }
+
+    // --- USERS SECTION CONTROLLER RUNTIME ---
+    async function loadUsers() {
+      const searchVal = document.getElementById('userSearchInput').value;
+      const queryParam = searchVal ? `?q=${encodeURIComponent(searchVal)}` : '';
+      const result = await executeSecureFetch(`/users${queryParam}`);
+      if (result.ok) {
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = '';
+        result.data.users.forEach(u => {
+          tbody.innerHTML += `
+            <tr>
+              <td><div style="font-weight:700; color:#fff;">@${u.username}</div><div style="font-size:11px; color:var(--muted); font-family:monospace;">${u.id}</div></td>
+              <td><div style="font-weight:500;">${u.display_name || 'No Profile String Display Attached'}</div><div style="font-size:12px; color:var(--muted);">${u.email}</div></td>
+              <td>
+                ${u.is_verified ? '<span class="pill pill-success" style="margin-right:4px;">Verified</span>' : ''}
+                ${u.is_business ? '<span class="pill pill-biz">Business Cluster</span>' : '<span class="pill pill-secondary">Consumer Base</span>'}
+              </td>
+              <td>
+                <div class="action-row">
+                  <button class="btn btn-secondary btn-sm" onclick="fetchAndEditUser('${u.id}')">Configure Model</button>
+                  <button class="btn btn-danger btn-sm" onclick="purgeTargetEntity('users', '${u.id}')">Purge</button>
+                </div>
+              </td>
+            </tr>`;
+        });
+      }
+    }
+
+    function openUserModal() {
+      document.getElementById('formUserId').value = '';
+      document.getElementById('formUsername').value = '';
+      document.getElementById('formEmail').value = '';
+      document.getElementById('formPassword').value = '';
+      document.getElementById('formDisplayName').value = '';
+      document.getElementById('formPhone').value = '';
+      document.getElementById('formWhatsapp').value = '';
+      document.getElementById('formWebsite').value = '';
+      document.getElementById('formIsVerified').checked = false;
+      document.getElementById('formIsBusiness').checked = false;
+      document.getElementById('modalUserTitle').textContent = "Register Profile Cluster Node";
+      document.getElementById('userActionModal').classList.add('active');
+    }
+
+    function closeUserModal() { document.getElementById('userActionModal').classList.remove('active'); }
+
+    async function fetchAndEditUser(id) {
+      const result = await executeSecureFetch(`/users/${id}`);
+      if (result.ok) {
+        const u = result.data.user;
+        document.getElementById('formUserId').value = u.id;
+        document.getElementById('formUsername').value = u.username;
+        document.getElementById('formEmail').value = u.email;
+        document.getElementById('formPassword').value = '';
+        document.getElementById('formDisplayName').value = u.display_name || '';
+        document.getElementById('formPhone').value = u.phone || '';
+        document.getElementById('formWhatsapp').value = u.whatsapp || '';
+        document.getElementById('formWebsite').value = u.website || '';
+        document.getElementById('formIsVerified').checked = !!u.is_verified;
+        document.getElementById('formIsBusiness').checked = !!u.is_business;
+        document.getElementById('modalUserTitle').textContent = `Modify Structural Frame Node: @${u.username}`;
+        document.getElementById('userActionModal').classList.add('active');
+      }
+    }
+
+    async function saveUserForm() {
+      const id = document.getElementById('formUserId').value;
+      const manifest = {
+        username: document.getElementById('formUsername').value,
+        email: document.getElementById('formEmail').value,
+        display_name: document.getElementById('formDisplayName').value,
+        phone: document.getElementById('formPhone').value,
+        whatsapp: document.getElementById('formWhatsapp').value,
+        website: document.getElementById('formWebsite').value,
+        is_verified: document.getElementById('formIsVerified').checked,
+        is_business: document.getElementById('formIsBusiness').checked
+      };
+      const pass = document.getElementById('formPassword').value;
+      if (pass) manifest.password = pass;
+
+      const result = await executeSecureFetch(id ? `/users/${id}` : '/users', {
+        method: id ? 'PUT' : 'POST',
+        body: JSON.stringify(manifest)
+      });
+      if (result.ok) {
+        triggerNotice(id ? "Ecosystem account parameters written successfully." : "Account initialized successfully.");
+        closeUserModal();
+        loadUsers();
+      }
+    }
+
+    // --- VIDEOS SECTION CONTROLLER RUNTIME ---
+    async function loadVideos() {
+      const searchTerm = document.getElementById('videoSearchInput').value.trim();
+      const queryParam = searchTerm ? `?q=${encodeURIComponent(searchTerm)}` : '';
+      const result = await executeSecureFetch(`/videos${queryParam}`);
+      if (result.ok) {
+        const tbody = document.getElementById('videosTableBody');
+        tbody.innerHTML = '';
+        result.data.videos.forEach(v => {
+          tbody.innerHTML += `
+            <tr>
+              <td><div style="font-weight:700; color:#fff;">${v.title}</div><div style="font-size:11px; color:var(--muted);">@${v.username || 'unknown'}</div></td>
+              <td><div style="font-weight:600; font-family:monospace;">${v.price != null ? parseFloat(v.price).toLocaleString() : '0.00'} ${v.currency || 'KES'}</div></td>
+              <td><div style="font-weight:600;">${Number(v.views_count || 0).toLocaleString()}</div></td>
+              <td><span class="pill pill-${v.status}">${v.status}</span></td>
+              <td style="font-size:12px; color:var(--muted);">${new Date(v.created_at).toLocaleString()}</td>
+              <td>
+                <div class="action-row">
+                  <button class="btn btn-secondary btn-sm" onclick="fetchAndEditVideo('${v.id}')">Adjust Configuration</button>
+                  <button class="btn btn-danger btn-sm" onclick="purgeTargetEntity('videos', '${v.id}')">Delete Video</button>
+                </div>
+              </td>
+            </tr>`;
+        });
+      }
+    }
+
+    function closeVideoModal() { document.getElementById('videoActionModal').classList.remove('active'); }
+
+    async function fetchAndEditVideo(id) {
+      const result = await executeSecureFetch(`/videos/${id}`);
+      if (result.ok) {
+        const v = result.data.video;
+        document.getElementById('formVideoId').value = v.id;
+        document.getElementById('formVideoTitle').value = v.title;
+        document.getElementById('formVideoDesc').value = v.description || '';
+        document.getElementById('formVideoPrice').value = v.price || '';
+        document.getElementById('formVideoCurrency').value = v.currency || 'KES';
+        document.getElementById('formVideoCity').value = v.location_city || '';
+        document.getElementById('formVideoCondition').value = v.condition || 'New';
+        document.getElementById('formVideoBrand').value = v.brand || '';
+        document.getElementById('formVideoModel').value = v.model || '';
+        document.getElementById('formVideoStatus').value = v.status;
+        document.getElementById('videoActionModal').classList.add('active');
+      }
+    }
+
+    async function saveVideoForm() {
+      const id = document.getElementById('formVideoId').value;
+      const manifest = {
+        title: document.getElementById('formVideoTitle').value,
+        description: document.getElementById('formVideoDesc').value,
+        price: document.getElementById('formVideoPrice').value,
+        currency: document.getElementById('formVideoCurrency').value,
+        location_city: document.getElementById('formVideoCity').value,
+        condition: document.getElementById('formVideoCondition').value,
+        brand: document.getElementById('formVideoBrand').value,
+        model: document.getElementById('formVideoModel').value,
+        status: document.getElementById('formVideoStatus').value
+      };
+      const result = await executeSecureFetch(`/videos/${id}`, { method: 'PUT', body: JSON.stringify(manifest) });
+      if (result.ok) {
+        triggerNotice("Video configuration mapping synchronised.");
+        closeVideoModal();
+        loadVideos();
+      }
+    }
+
+    // --- ADS CAMPAIGNS CONTROLLER RUNTIME ---
+    async function loadAds() {
+      const searchTerm = document.getElementById('adSearchInput').value.trim();
+      const status = document.getElementById('adStatusFilter').value.trim();
+      const queryParts = [];
+      if (searchTerm) queryParts.push(`q=${encodeURIComponent(searchTerm)}`);
+      if (status) queryParts.push(`status=${encodeURIComponent(status)}`);
+      const queryParam = queryParts.length ? `?${queryParts.join('&')}` : '';
+      const result = await executeSecureFetch(`/ads${queryParam}`);
+      if (result.ok) {
+        const tbody = document.getElementById('adsTableBody');
+        tbody.innerHTML = '';
+        result.data.ads.forEach(ad => {
+          tbody.innerHTML += `
+            <tr>
+              <td><div style="font-weight:700; color:#fff;">${ad.title}</div><div style="font-size:11px; color:var(--muted);">Owner: @${ad.username || 'unknown'}</div>${ad.video_title ? `<div style="font-size:11px; color:var(--muted);">Linked content: ${ad.video_title}</div>` : ''}</td>
+              <td><div style="font-weight:600; font-family:monospace;">KES ${ad.budget != null ? parseFloat(ad.budget).toLocaleString() : '0.00'}</div><div style="font-size:11px; color:var(--muted);">Spent: KES ${ad.spent != null ? parseFloat(ad.spent).toLocaleString() : '0.00'}</div></td>
+              <td><div style="display:flex; gap:6px; flex-wrap:wrap;"><span class="pill pill-${ad.status}">${ad.status}</span><span class="pill pill-${ad.payment_status === 'success' ? 'success' : ad.payment_status === 'failed' ? 'failed' : 'pending'}">${ad.payment_status || 'pending'}</span></div></td>
+              <td style="font-size:12px; color:var(--muted);">${new Date(ad.created_at).toLocaleString()}</td>
+              <td>
+                <div class="action-row">
+                  <button class="btn btn-secondary btn-sm" onclick="toggleCampaignLifecycleState('${ad.id}', '${ad.status === 'active' ? 'paused' : 'active'}')">${ad.status === 'active' ? 'Pause' : 'Activate'}</button>
+                  <button class="btn btn-danger btn-sm" onclick="purgeTargetEntity('ads', '${ad.id}')">Delete Ad</button>
+                </div>
+              </td>
+            </tr>`;
+        });
+      }
+    }
+
+    function openAdModal() {
+      document.getElementById('formAdUserId').value = '';
+      document.getElementById('formAdVideoId').value = '';
+      document.getElementById('formAdTitle').value = '';
+      document.getElementById('formAdDesc').value = '';
+      document.getElementById('formAdBudget').value = '5000';
+      document.getElementById('formAdTargetUrl').value = 'https://';
+      document.getElementById('adActionModal').classList.add('active');
+    }
+    function closeAdModal() { document.getElementById('adActionModal').classList.remove('active'); }
+
+    async function submitAdForm() {
+      const manifest = {
+        user_id: document.getElementById('formAdUserId').value,
+        video_id: document.getElementById('formAdVideoId').value,
+        title: document.getElementById('formAdTitle').value,
+        description: document.getElementById('formAdDesc').value,
+        budget: document.getElementById('formAdBudget').value,
+        target_url: document.getElementById('formAdTargetUrl').value
+      };
+      const result = await executeSecureFetch('/ads', { method: 'POST', body: JSON.stringify(manifest) });
+      if (result.ok) {
+        triggerNotice("Promoted ad matrix injection completed.");
+        closeAdModal();
+        loadAds();
+      }
+    }
+
+    async function toggleCampaignLifecycleState(id, targetStatus) {
+      const result = await executeSecureFetch(`/ads/${id}`, { method: 'PUT', body: JSON.stringify({ status: targetStatus }) });
+      if (result.ok) {
+        triggerNotice("Campaign state configuration parameters transformed.");
+        loadAds();
+      }
+    }
+
+    // --- PAYMENTS LEDGER VIEW TRACKER ---
+    async function loadPayments() {
+      const searchTerm = document.getElementById('paymentSearchInput').value.trim();
+      const queryParam = searchTerm ? `?q=${encodeURIComponent(searchTerm)}` : '';
+      const result = await executeSecureFetch(`/payments${queryParam}`);
+      if (result.ok) {
+        const tbody = document.getElementById('paymentsTableBody');
+        tbody.innerHTML = '';
+        result.data.payments.forEach(p => {
+          tbody.innerHTML += `
+            <tr>
+              <td style="font-family:monospace; font-size:12px; font-weight:700; color:#fff;">${p.paystack_reference}</td>
+              <td><div style="font-weight:500;">@${p.username || 'Unassigned User Node'}</div><div style="font-size:11px; color:var(--muted);">${p.email || 'System Default Connection'}</div></td>
+              <td><div style="font-weight:600; color:var(--green); font-family:monospace;">${parseFloat(p.amount).toLocaleString()} ${p.currency || 'KES'}</div></td>
+              <td><span class="pill pill-${p.status}">${p.status}</span></td>
+              <td style="font-size:12px; color:var(--muted);">${new Date(p.created_at).toLocaleString()}</td>
+            </tr>`;
+        });
+      }
+    }
+
+    // --- TRUST & SAFETY POLICY MODERATION CONTROLLER ---
+    async function loadReports() {
+      const searchTerm = document.getElementById('reportSearchInput').value.trim();
+      const status = document.getElementById('reportStatusFilter').value.trim();
+      const queryParts = [];
+      if (searchTerm) queryParts.push(`q=${encodeURIComponent(searchTerm)}`);
+      if (status) queryParts.push(`status=${encodeURIComponent(status)}`);
+      const queryParam = queryParts.length ? `?${queryParts.join('&')}` : '';
+      const result = await executeSecureFetch(`/reports${queryParam}`);
+      if (result.ok) {
+        const tbody = document.getElementById('reportsTableBody');
+        tbody.innerHTML = '';
+        result.data.reports.forEach(r => {
+          tbody.innerHTML += `
+            <tr>
+              <td style="font-family:monospace; font-size:11px;">${r.id.substring(0, 8)}...</td>
+              <td>
+                <div style="font-weight:600; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${r.video_title || 'Target Entity Dropped/Purged'}</div>
+                <div style="font-size:11px; color:var(--muted);">Reporter: @${r.reporter_username || 'anonymous'}</div>
+                ${r.owner_username ? `<div style="font-size:11px; color:var(--muted);">Owner: @${r.owner_username}</div>` : ''}
+              </td>
+              <td style="max-width:320px;">
+                <div style="font-weight:500; color:#fff;">Claim: "${r.reason}"</div>
+                <div style="font-size:12px; color:var(--muted);">${r.description || 'No descriptive structural log context filed'}</div>
+              </td>
+              <td><span class="pill pill-${r.status}">${r.status}</span></td>
+              <td style="font-size:12px; color:var(--muted);">${new Date(r.created_at).toLocaleString()}</td>
+              <td>
+                <div class="action-row" style="flex-wrap:wrap; gap:6px;">
+                  <button class="btn btn-secondary btn-sm" onclick="processReportAction('${r.id}', 'resolved')">Resolve</button>
+                  <button class="btn btn-secondary btn-sm" onclick="processReportAction('${r.id}', 'dismissed')">Dismiss</button>
+                  <button class="btn btn-secondary btn-sm" onclick="processReportAction('${r.id}', 'warn')">Warn Owner</button>
+                  <button class="btn btn-secondary btn-sm" onclick="processReportAction('${r.id}', 'email')">Email Owner</button>
+                  <button class="btn btn-danger btn-sm" onclick="processReportAction('${r.id}', 'delete')">Delete Reported Video</button>
+                </div>
+              </td>
+            </tr>`;
+        });
+      }
+    }
+
+    async function processReportAction(id, action) {
+      const confirmed = action === 'delete'
+        ? confirm('Delete the reported content and close this report? This is irreversible.')
+        : true;
+      if (!confirmed) return;
+
+      const result = await executeSecureFetch(`/reports/${id}/action`, {
+        method: 'POST',
+        body: JSON.stringify({ action })
+      });
+      if (result.ok) {
+        triggerNotice(action === 'delete' ? 'Reported content has been deleted.' : 'Report action completed successfully.');
+        loadReports();
+        if (action === 'delete') {
+          loadVideos();
+          loadAds();
+        }
+        refreshAllDashboardTelemetry();
+      }
+    }
+
+    // --- SYSTEM CLUSTER CONTROL ACTIONS ---
+    async function triggerHealthDiagnostic() {
+      const outBox = document.getElementById('healthEngineOutput');
+      outBox.textContent = "[SYSTEM INTERFACES CHECK DISPATCHED]: Polling target database nodes across internal routing planes...";
+      const result = await executeSecureFetch('/test-connections');
+      outBox.textContent = result.ok ? JSON.stringify(result.data, null, 2) : `[ROUTING FAULT]: ${result.error}`;
+    }
+
+    async function testDB() {
+      const outBox = document.getElementById('healthEngineOutput');
+      outBox.textContent = '[DB CHECK] Running simple SELECT 1';
+      const res = await executeSecureFetch('/test-connections');
+      outBox.textContent = res.ok ? JSON.stringify({ database: res.data.database }, null, 2) : `[DB ERROR]: ${res.error}`;
+    }
+
+    async function testCloudinaryPing() {
+      const outBox = document.getElementById('healthEngineOutput');
+      outBox.textContent = '[CLOUDINARY] Ping';
+      const res = await executeSecureFetch('/test-connections');
+      outBox.textContent = res.ok ? JSON.stringify({ cloudinary: res.data.cloudinary }, null, 2) : `[CLOUDINARY ERROR]: ${res.error}`;
+    }
+
+    async function testCloudinarySignature() {
+      const outBox = document.getElementById('healthEngineOutput');
+      outBox.textContent = '[CLOUDINARY] Requesting upload signature';
+      const res = await executeSecureFetch('/cloudinary-sign');
+      outBox.textContent = res.ok ? JSON.stringify(res.data, null, 2) : `[CLOUDINARY SIGN ERROR]: ${res.error}`;
+    }
+
+    async function testCloudinaryUpload() {
+      const outBox = document.getElementById('healthEngineOutput');
+      outBox.textContent = '[CLOUDINARY] Performing small server-side upload test';
+      const res = await executeSecureFetch('/cloudinary-test');
+      outBox.textContent = res.ok ? JSON.stringify(res.data, null, 2) : `[CLOUDINARY UPLOAD ERROR]: ${res.error}`;
+    }
+
+    async function testPaystack() {
+      const outBox = document.getElementById('healthEngineOutput');
+      outBox.textContent = '[PAYMENTS] Verifying Paystack connectivity';
+      const res = await executeSecureFetch('/test-connections');
+      outBox.textContent = res.ok ? JSON.stringify({ paystack: res.data.paystack }, null, 2) : `[PAYSTACK ERROR]: ${res.error}`;
+    }
+
+    async function testEmail() {
+      const outBox = document.getElementById('healthEngineOutput');
+      outBox.textContent = '[EMAIL] Verifying SMTP credentials';
+      const res = await executeSecureFetch('/test-connections');
+      outBox.textContent = res.ok ? JSON.stringify({ email: res.data.email }, null, 2) : `[EMAIL ERROR]: ${res.error}`;
+    }
+
+    async function loadSystemConfig() {
+      const configBox = document.getElementById('systemConfigOutput');
+      configBox.textContent = '[SYSTEM CONFIG] Loading...';
+      const result = await executeSecureFetch('/api/system/config');
+      if (result.ok) {
+        const { latest_version, version_code, force_update, maintenance_mode, update_url, update_message, release_notes, features_enabled, build_date } = result.data;
+        document.getElementById('systemVersionInput').value = latest_version || '';
+        document.getElementById('systemCodeInput').value = version_code || '';
+        document.getElementById('systemUpdateUrlInput').value = update_url || '';
+        document.getElementById('systemUpdateMessageInput').value = update_message || '';
+        document.getElementById('systemReleaseNotesInput').value = release_notes || '';
+        document.getElementById('systemForceUpdateInput').checked = !!force_update;
+        document.getElementById('systemMaintenanceModeInput').checked = !!maintenance_mode;
+        configBox.textContent = JSON.stringify(result.data, null, 2);
+      } else {
+        configBox.textContent = `[SYSTEM CONFIG ERROR]: ${result.error}`;
+      }
+    }
+
+    async function pushSystemConfig() {
+      const payload = {
+        latest_version: document.getElementById('systemVersionInput').value.trim(),
+        version_code: Number(document.getElementById('systemCodeInput').value) || undefined,
+        update_url: document.getElementById('systemUpdateUrlInput').value.trim(),
+        update_message: document.getElementById('systemUpdateMessageInput').value.trim(),
+        release_notes: document.getElementById('systemReleaseNotesInput').value.trim(),
+        force_update: document.getElementById('systemForceUpdateInput').checked,
+        maintenance_mode: document.getElementById('systemMaintenanceModeInput').checked,
+      };
+
+      const result = await executeSecureFetch('/api/system/config', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      const configBox = document.getElementById('systemConfigOutput');
+      if (result.ok) {
+        const { config_path, config_source, saved_path, ...safeData } = result.data;
+        document.getElementById('systemPathInfo').textContent = `Source: ${config_source || 'unknown'} | loaded from: ${config_path || 'n/a'}${saved_path ? ` | saved to: ${saved_path}` : ''}`;
+        configBox.textContent = JSON.stringify(safeData, null, 2);
+        triggerNotice('System update configuration published successfully.');
+      } else {
+        configBox.textContent = `[PUSH CONFIG ERROR]: ${result.error}`;
+        triggerNotice(result.error, true);
+      }
+    }
+
+    async function runDatabaseSeed() {
+      if (!confirm("CRITICAL INTERVENTION MANDATE ALERT:\nAre you entirely certain you want to initiate cluster reconfiguration? All matching table matrices face complete data erasure!")) return;
+      const targetBtn = document.getElementById('seedActionBtn');
+      targetBtn.disabled = true; targetBtn.textContent = "[PROCESSING OPERATION NODE RESTORATION CRITICAL TASK]...";
+      const checkedWipe = document.getElementById('seedWipeCheckbox').checked;
+      
+      const result = await executeSecureFetch('/seed', { method: 'POST', body: JSON.stringify({ wipe: checkedWipe }) });
+      targetBtn.disabled = false; targetBtn.textContent = "Execute Cluster Recovery Re-seeding Routine";
+      if (result.ok) {
+        triggerNotice("Ecosystem operational framework reset and re-seeded successfully.");
+        if (checkedWipe) switchPane('overview');
+      }
+    }
+
+    async function purgeTargetEntity(resourceType, id) {
+      if (!confirm(`Confirm irreversible structural purge operations on the selected tracking record from entity cluster: [${resourceType}]?`)) return;
+      const result = await executeSecureFetch(`/${resourceType}/${id}`, { method: 'DELETE' });
+      if (result.ok) {
+        triggerNotice("Resource map tracking index completely purged from system cluster.");
+        if (resourceType === 'users') loadUsers();
+        if (resourceType === 'videos') loadVideos();
+        if (resourceType === 'ads') loadAds();
+      }
+    }
+  </script>
+</body>
+</html>

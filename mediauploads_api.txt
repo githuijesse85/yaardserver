@@ -1,0 +1,382 @@
+Media Uploads API Reference
+===========================
+
+This document describes the current media upload endpoints in the Yaard backend, including both user image uploads and video uploads.
+
+All API responses use a wrapper:
+- Success:
+  {
+    "success": true,
+    "data": { ... }
+  }
+- Error:
+  {
+    "success": false,
+    "error": "Error message"
+  }
+
+Authentication
+--------------
+All upload signature endpoints require a valid `Authorization: Bearer <token>` header.
+
+
+1) User Image Upload API
+------------------------
+
+### 1.1 Get Upload Signature
+
+Supported endpoints:
+- `GET /api/images/upload-signature`
+- `POST /api/images/upload-signature`
+
+Request parameters:
+- `imageType` (required): one of `avatar`, `cover`, `thumbnail`
+- `resourceType` (optional): defaults to `image`
+- `resource_type` is accepted as an alias
+
+Usage:
+- GET: query string values
+- POST: JSON body values
+
+Example GET:
+```
+GET /api/images/upload-signature?imageType=avatar
+Authorization: Bearer <token>
+```
+
+Example POST:
+```
+POST /api/images/upload-signature
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "imageType": "avatar",
+  "resourceType": "image"
+}
+```
+
+Successful response:
+```
+{
+  "success": true,
+  "data": {
+    "sessionId": 123,
+    "signature": "...",
+    "timestamp": 1234567890,
+    "cloudName": "your_cloud_name",
+    "apiKey": "cloudinary_api_key",
+    "folder": "yaard/users/{userId}/avatar",
+    "resourceType": "image",
+    "params": {
+      "context": "alt=avatar|type=avatar",
+      "folder": "yaard/users/{userId}/avatar",
+      "resource_type": "image",
+      "session_id": 123,
+      "tags": ["user_{userId}", "avatar"],
+      "timestamp": 1234567890
+    }
+  }
+}
+```
+
+Possible failures:
+- `400` — invalid or missing `imageType`
+- `401` — missing or invalid auth token
+- `500` — internal server error
+
+Notes:
+- The returned `signature` is a Cloudinary upload signature.
+- The client must upload directly to Cloudinary using the signed params.
+
+
+### 1.2 Complete Upload
+
+Endpoint:
+- `POST /api/images/upload-complete`
+
+Authentication required.
+
+Request body JSON:
+- `sessionId` (required)
+- `imageType` (required)
+- `cloudinaryPublicId` (required)
+- `imageUrl` (required)
+- `width` (optional)
+- `height` (optional)
+
+Example:
+```
+POST /api/images/upload-complete
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "sessionId": 123,
+  "imageType": "avatar",
+  "cloudinaryPublicId": "yaard/users/123/avatar/abcd1234",
+  "imageUrl": "https://res.cloudinary.com/your_cloud_name/image/upload/v123/yaard/users/123/avatar/abcd1234.jpg",
+  "width": 400,
+  "height": 400
+}
+```
+
+Successful response:
+```
+{
+  "success": true,
+  "data": {
+    "message": "Upload completed successfully",
+    "sessionId": 123,
+    "imageType": "avatar",
+    "imageUrl": "https://...",
+    "publicId": "yaard/users/123/avatar/abcd1234"
+  }
+}
+```
+
+Possible failures:
+- `400` — missing required fields
+- `401` — auth failure
+- `404` — upload session not found or unauthorized
+
+Notes:
+- This endpoint updates the user profile column (`avatar_url` or `cover_url`).
+- It also writes session state to `upload_sessions`.
+
+
+### 1.3 Upload Progress
+
+Endpoint:
+- `POST /api/images/upload-progress`
+
+Authentication required.
+
+Request body JSON:
+- `sessionId` (required)
+- `progressPercent` (required)
+
+Example:
+```
+POST /api/images/upload-progress
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "sessionId": 123,
+  "progressPercent": 75
+}
+```
+
+Successful response:
+```
+{
+  "success": true,
+  "data": {
+    "sessionId": 123,
+    "progressPercent": 75,
+    "status": "uploading"
+  }
+}
+```
+
+If `progressPercent` is `100`, status becomes `processing`.
+
+Possible failures:
+- `400` — missing params
+- `401` — auth failure
+- `404` — upload session not found
+
+
+### 1.4 Get Upload Session
+
+Endpoint:
+- `GET /api/images/session/:sessionId`
+
+Authentication required.
+
+Example:
+```
+GET /api/images/session/123
+Authorization: Bearer <token>
+```
+
+Successful response:
+```
+{
+  "success": true,
+  "data": {
+    "id": 123,
+    "status": "pending",
+    "progress_percent": 25,
+    "cloudinary_public_id": null,
+    "error_message": null,
+    "metadata": {...},
+    "created_at": "..."
+  }
+}
+```
+
+Possible failures:
+- `401` — auth failure
+- `404` — session not found
+
+
+### 1.5 Delete Image
+
+Endpoints:
+- `DELETE /api/images/avatar`
+- `DELETE /api/images/cover`
+
+Authentication required.
+
+No request body required.
+
+Successful response:
+```
+{
+  "success": true,
+  "data": {
+    "message": "avatar deleted successfully",
+    "imageType": "avatar"
+  }
+}
+```
+
+Possible failures:
+- `401` — auth failure
+- `404` — user not found
+
+
+2) Video Upload API
+-------------------
+
+### 2.1 Get Upload Signature
+
+Supported endpoints:
+- `GET /api/videos/upload-signature`
+- `POST /api/videos/upload-signature`
+- `GET /api/videos/signature`
+- `POST /api/videos/signature`
+
+Authentication required.
+
+Request params:
+- `folder` (optional): defaults to `yaard/videos`
+- `resourceType` or `resource_type` (optional): defaults to `video`
+
+Example GET:
+```
+GET /api/videos/upload-signature?folder=yaard/videos&resourceType=video
+Authorization: Bearer <token>
+```
+
+Example POST:
+```
+POST /api/videos/upload-signature
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "folder": "yaard/videos",
+  "resourceType": "video"
+}
+```
+
+Successful response:
+```
+{
+  "success": true,
+  "data": {
+    "signature": "...",
+    "timestamp": 1234567890,
+    "cloudName": "your_cloud_name",
+    "apiKey": "cloudinary_api_key",
+    "folder": "yaard/videos",
+    "resourceType": "video",
+    "params": {
+      "folder": "yaard/videos",
+      "resource_type": "video",
+      "timestamp": 1234567890
+    }
+  }
+}
+```
+
+Possible failures:
+- `401` — missing/invalid auth token
+- `500` — internal signing error
+
+Notes:
+- The returned payload contains all values needed to perform a direct upload to Cloudinary.
+- The client should upload to `https://api.cloudinary.com/v1_1/{cloudName}/video/upload`.
+
+
+3) Direct Cloudinary Upload Requirements
+----------------------------------------
+
+After obtaining a signature from the backend, the client must upload directly to Cloudinary using the returned fields.
+
+Required form fields:
+- `file` — the video/image binary or file blob
+- `api_key`
+- `timestamp`
+- `signature`
+- `folder`
+
+Optional but supported depending on signature payload:
+- `tags`
+- `context`
+- `resource_type`
+- any signed param returned in `params`
+
+Cloudinary upload URLs:
+- Images: `https://api.cloudinary.com/v1_1/{cloudName}/image/upload`
+- Videos: `https://api.cloudinary.com/v1_1/{cloudName}/video/upload`
+
+
+4) Common error cases
+---------------------
+
+- `401 Unauthorized`
+  - missing bearer token
+  - invalid JWT
+  - expired token
+
+- `400 Bad Request`
+  - missing required request parameter
+  - invalid `imageType`
+
+- `404 Not Found`
+  - image upload session not found
+  - user not found when deleting image
+
+- `500 Internal Server Error`
+  - backend signing failure
+  - database insert/update error
+
+
+5) Notes for mobile clients
+---------------------------
+
+- Always request a fresh signature for each upload.
+- Do not reuse signatures across multiple uploads.
+- Ensure the client sends `Authorization: Bearer <token>` when calling backend signature endpoints.
+- For image uploads, use `imageType` to select `avatar`, `cover`, or `thumbnail`.
+- For video uploads, use `folder` and `resourceType=video` to generate the correct signature.
+
+
+6) Example mobile upload flow (image)
+------------------------------------
+1. Request signature:
+   - `POST /api/images/upload-signature` with `imageType: "avatar"`
+2. Upload file to Cloudinary with returned `signature`, `timestamp`, `api_key`, and `folder`.
+3. Call `POST /api/images/upload-complete` with the upload session id and Cloudinary return data.
+
+
+7) Example mobile upload flow (video)
+------------------------------------
+1. Request signature:
+   - `GET /api/videos/upload-signature?folder=yaard/videos&resourceType=video`
+2. Upload file to Cloudinary using the returned signed payload.
+3. Process Cloudinary result in the mobile client for additional backend actions if needed.

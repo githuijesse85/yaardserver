@@ -1,0 +1,15 @@
+{
+  "latest_version": "4.6.1",
+  "version_code": 47,
+  "force_update": false,
+  "maintenance_mode": false,
+  "update_url": "https://play.google.com/store/apps/details?id=com.yaard.app",
+  "update_message": "A improved media playback controls in feed. Upload issues fixed. Whatsapp phone number validation improved. User profile experience improved.",
+  "release_notes": "A improved media playback controls in feed. Upload issues fixed. Whatsapp phone number validation improved. User profile experience improved.",
+  "features_enabled": {
+    "ads": true,
+    "reporting": true,
+    "dynamic_forms": true
+  },
+  "build_date": "2025-07-09T00:00:00.000Z"
+}

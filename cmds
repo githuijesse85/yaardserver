@@ -1,0 +1,25 @@
+# 1. Install Netlify CLI globally
+npm install -g netlify-cli
+
+# 2. Log in
+netlify login
+
+# 3. Go into your project folder
+cd yaard-clean
+
+# 4. Install dependencies
+npm install
+
+# 5. Create the site on your yaard team with the exact URL
+netlify sites:create --name yaardserver --account-slug yaard
+
+# 6. Link this folder to that site
+netlify link --name yaardserver
+
+# 7. Import your .env file into Netlify env vars
+netlify env:import .env
+
+# 8. Deploy to production
+netlify deploy --prod
+
+netlify api createSiteBuild --data '{ "site_id": "9044e063-b0ed-442c-9a8c-c21e0c487fa2", "clear_cache": true }'

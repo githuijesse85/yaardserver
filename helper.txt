@@ -1,0 +1,51 @@
+SUPABASE DB: postgresql://postgres:@Burakumin_654@db.wtlssqoatiqfgckooyqo.supabase.co:5432/postgres
+
+CLOUDINARY:
+NAME:  dfua6nf9r
+API KEY: 793675243465736
+SECRET KEY: I_VLrqTwFyXCoSYzmsz4zcif0xk
+CLOUDINARY_URL=cloudinary://793675243465736:I_VLrqTwFyXCoSYzmsz4zcif0xk@dfua6nf9r
+
+PAYSTACK_LIVE_SECRET_KEY=sk_live_f51487674a20143e2843730026d9111d3eb84f47
+PAYSTACK_LIVE_PUBLIC_KEY=pk_live_e49516471972692002d0ab043c29bfccf66ba107
+
+JWT_SECRET=5924c7898d74866b9b9fea281609c72d60cce74f80ebaaa463528be32f6d4643
+
+
+npm install -g npm@latest
+
+netlify user:tronsystems56 | email:yaardlisting@gmail.com | pass:@Don35737926
+
+=========================
+netlify deploy process
+=========================
+>> npm install -g netlify-cli
+
+>> netlify login
+
+>> cd path/to/your/project
+
+>> netlify init
+>> netlify link
+>> netlify deploy --skip-functions-cache
+>> netlify deploy --trigger-clear-cache
+--------------------------
+netlify env:set DATABASE_URL "postgresql://postgres.wtlssqoatiqfgckooyqo:%40Burakumin_654@aws-0-eu-west-1.pooler.supabase.com:6543/postgres"
+
+netlify env:set JWT_SECRET  "5924c7898d74866b9b9fea281609c72d60cce74f80ebaaa463528be32f6d4643"
+netlify env:set JWT_EXPIRES_IN "7d"
+netlify env:set REFRESH_TOKEN_EXPIRES_IN "30d"
+netlify env:set PAYSTACK_SECRET_KEY "sk_live_f51487674a20143e2843730026d9111d3eb84f47"
+netlify env:set PAYSTACK_PUBLIC_KEY "pk_live_e49516471972692002d0ab043c29bfccf66ba107"
+netlify env:set CLOUDINARY_CLOUD_NAME "dfua6nf9r"
+netlify env:set CLOUDINARY_API_KEY "793675243465736"
+netlify env:set CLOUDINARY__API_SECRET "I_VLrqTwFyXCoSYzmsz4zcif0xk"
+netlify env:set ADMIN_SECRET "@Burakumin_654"
+netlify env:set EMAIL_USER "info@yaard.biz"
+netlify env:set EMAIL_PASS "@Don35737926"
+netlify env:set NODE_ENV "production"
+netlify env:set API_URL "https://yaardserver.netlify.app"
+
+>> netlify env:list
+
+>> netlify env:unset API_KEY
