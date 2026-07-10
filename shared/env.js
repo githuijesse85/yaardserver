@@ -3,11 +3,12 @@
  * Loads .env in development; in production (Netlify) vars are injected by the platform.
  */
 
+import dotenv from "dotenv";
+
 // Only load dotenv in non-production environments to avoid overriding Netlify's env injection
 if (process.env.NODE_ENV !== "production") {
   try {
-    const { config } = await import("dotenv");
-    config();
+    dotenv.config();
   } catch {
     // dotenv is optional — ignore if missing
   }
