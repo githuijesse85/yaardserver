@@ -3,7 +3,6 @@ import { hash, compare } from "bcryptjs";
 import { query } from "../../shared/db.js";
 import { handleCors, success, error, parseBody, requireAuth } from "../../shared/middleware.js";
 import { cloudinary, generateUploadSignature } from "../../shared/cloudinary.js";
-import { create } from "axios";
 import { sendAdWarningEmail } from "../../shared/email.js";
 
 // SECURITY: Use environment variable for admin password
@@ -591,7 +590,7 @@ export const handler = async (event, context) => {
           sqlParams.push(statusFilter);
         }
         if (searchTerm) {
-          whereClauses.push(`(r.reason ILIKE $${sqlParams.length + 1} OR r.description ILIKE $${sqlParams.length + 1} OR u.username ILIKE $${sqlParams.length + 1} OR v.title ILIKE $${sqlParams.length + 1})`);
+          whereClauses.push(`(r.reason ILIKE $${sqlParams.length + 1} OR r.description ILIKE $${sqlParams.length + 1} OR u.username ILIKE $${sqlParams.length + 1} OR v.title ILIKE $${sqlParams.le[...]
           sqlParams.push(searchTerm);
         }
         if (whereClauses.length) {
@@ -666,8 +665,10 @@ export const handler = async (event, context) => {
       // 3. Paystack Authenticated Check
       try {
         if (!process.env.PAYSTACK_SECRET_KEY) throw new Error("PAYSTACK_SECRET_KEY is undefined in .env");
-        const psRes = await create({ headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` } })
-            .get("https://api.paystack.co/integration/payment_session_timeout");
+        const psRes = await fetch("https://api.paystack.co/integration/payment_session_timeout", {
+          method: "GET",
+          headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` }
+        });
         diagnostics.paystack = psRes.status === 200 ? "Connected & Healthy" : `Failing with status ${psRes.status}`;
       } catch (e) { 
         diagnostics.paystack = `Error: ${e.message}`; 
