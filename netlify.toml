@@ -1,51 +1,43 @@
 [build]
-  # The directory containing your static assets
+  # Directories mapped cleanly for Netlify's Linux environment
   publish = "public"
-  
-  # The directory containing your serverless functions
   functions = "netlify/functions"
-  
-  # Uncomment and set your build command if you are compiling code (e.g., TS to JS, or building a frontend)
-  # command = "npm run build"
 
 [build.environment]
+  # Pins Node to match your updated package.json
   NODE_VERSION = "18"
 
 [functions]
+  # Faster and more reliable bundling for your API
   node_bundler = "esbuild"
 
 [functions.admin]
-  # Note: A 26-second timeout requires a Netlify Pro or Enterprise tier (default is 10s).
+  # Custom timeout for your admin processes (Requires Pro/Enterprise)
   timeout = 26 
 
 # ==========================================
 # ROUTING (REDIRECTS & REWRITES)
 # ==========================================
 
-# 1. API Catch-all Rewrite
-# Maps requests from /api/myFunction to /.netlify/functions/myFunction
+# 1. API Catch-all
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
-  force = true # Forces the rewrite even if a matching file exists in 'public'
+  force = true
 
-# 2. Admin Function Route
-# Maps your admin panel requests cleanly to your specific admin function
+# 2. Dedicated Admin Route
 [[redirects]]
   from = "/admin/*"
   to = "/.netlify/functions/admin"
   status = 200
   force = true
 
-# 3. SPA Fallback (Optional but Recommended)
-# If your 'public' folder hosts a Single Page Application (like React, Vue, or a standard frontend),
-# this passes unhandled URL routes to your index.html so client-side routing takes over.
+# 3. Frontend / SPA Fallback
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-  # We do not use 'force = true' here so that actual static assets (images, css) still load correctly.
 
 # ==========================================
 # SECURITY HEADERS
@@ -54,13 +46,11 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Frame-Options = "DENY"
+    # Fixed: Combined into a single block with SAMEORIGIN
+    X-Frame-Options = "SAMEORIGIN"
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    
-    # Uncomment if your mobile app needs to make cross-origin requests to this server
-    # Access-Control-Allow-Origin = "*"
 
   [headers.values]
   X-Frame-Options = "SAMEORIGIN"
