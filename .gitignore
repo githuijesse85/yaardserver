@@ -3,3 +3,10 @@ node_modules/
 .netlify/
 *.log
 dist/
+build/
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
