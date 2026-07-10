@@ -1,39 +1,49 @@
 [build]
-  # Directories mapped cleanly for Netlify's Linux environment
+  # The directory containing your static assets
   publish = "public"
+  
+  # The directory containing your serverless functions
   functions = "netlify/functions"
+  
+  # Uncomment and set your build command if compiling code (e.g., TS to JS, or building a frontend)
+  # command = "npm run build"
 
 [build.environment]
-  # Pins Node to match your updated package.json
   NODE_VERSION = "18"
 
 [functions]
-  # Faster and more reliable bundling for your API
   node_bundler = "esbuild"
 
 [functions.admin]
-  # Custom timeout for your admin processes (Requires Pro/Enterprise)
+  # Note: A 26-second timeout requires a Netlify Pro or Enterprise tier (default is 10s)
   timeout = 26 
 
 # ==========================================
 # ROUTING (REDIRECTS & REWRITES)
 # ==========================================
 
-# 1. API Catch-all
+# 1. API Catch-all Rewrite
+# Maps requests from /api/myFunction to /.netlify/functions/myFunction
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
   force = true
 
-# 2. Dedicated Admin Route
+# 2. Admin Panel - Static SPA Route
+# Serves the admin panel from static files with client-side routing
+[[redirects]]
+  from = "/admin"
+  to = "/admin/"
+  status = 301
+
 [[redirects]]
   from = "/admin/*"
-  to = "/.netlify/functions/admin"
+  to = "/admin/index.html"
   status = 200
-  force = true
 
 # 3. Frontend / SPA Fallback
+# Passes unhandled URL routes to index.html so client-side routing takes over
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -46,61 +56,10 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    # Fixed: Combined into a single block with SAMEORIGIN
     X-Frame-Options = "SAMEORIGIN"
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-
-  [headers.values]
-  X-Frame-Options = "SAMEORIGIN"
-  X-Content-Type-Options = "nosniff"
-  Referrer-Policy = "strict-origin-when-cross-origin"
-
-[[redirects]]
-from = "/api/*"
-to = "/.netlify/functions/:splat"
-status = 200
-force = true
-
-  [redirects.query]
-
-  [redirects.conditions]
-
-  [redirects.headers]
-
-[[redirects]]
-from = "/admin"
-to = "/admin/"
-status = 301
-force = false
-
-  [redirects.query]
-
-  [redirects.conditions]
-
-  [redirects.headers]
-
-[[redirects]]
-from = "/admin/"
-to = "/admin/index.html"
-status = 200
-force = false
-
-  [redirects.query]
-
-  [redirects.conditions]
-
-  [redirects.headers]
-
-[[redirects]]
-from = "/admin/*"
-to = "/admin/index.html"
-status = 200
-force = false
-
-  [redirects.query]
-
-  [redirects.conditions]
-
-  [redirects.headers]
+    
+    # Uncomment if your mobile app needs to make cross-origin requests to this server
+    # Access-Control-Allow-Origin = "*"
