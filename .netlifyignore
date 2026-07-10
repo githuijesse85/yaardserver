@@ -1,0 +1,21 @@
+# Exclude test/debug functions from Netlify function discovery
+netlify/functions/cloudinary-sign.js
+netlify/functions/cloudinary-test.js
+netlify/functions/test_api_final.js
+
+# Exclude development documentation from builds
+ADMIN_PASSWORD_FIX.md
+ADMIN_WIRING_VERIFICATION.md
+COMPLETION_SUMMARY.md
+DEPLOYMENT_COMPLETE.md
+IMPLEMENTATION_GUIDE.md
+MIGRATION_VERIFICATION_STEPS.sql
+MOBILE_API_INTEGRATION.md
+Mobile_Integration_Process.md
+.env.production.example
+audit.txt
+cmds
+deno.lock
+functions_test
+helper.txt
+mediauploads_api.txt
