@@ -1,39 +1,66 @@
-functionsDirectory = "D:\\yaard-server-v50_prod\\netlify\\functions"
-functionsDirectoryOrigin = "config-v1"
-headersOrigin = "config"
-redirectsOrigin = "config"
-plugins = []
-
 [build]
-publish = "D:\\yaard-server-v50_prod\\public"
-publishOrigin = "config"
-functions = "D:\\yaard-server-v50_prod\\netlify\\functions"
+  # The directory containing your static assets
+  publish = "public"
+  
+  # The directory containing your serverless functions
+  functions = "netlify/functions"
+  
+  # Uncomment and set your build command if you are compiling code (e.g., TS to JS, or building a frontend)
+  # command = "npm run build"
 
-  [build.environment]
+[build.environment]
   NODE_VERSION = "18"
 
-  [build.processing]
-
-    [build.processing.css]
-
-    [build.processing.html]
-
-    [build.processing.images]
-
-    [build.processing.js]
-
-  [build.services]
-
 [functions]
-
-  [functions.admin]
-  timeout = 26
-
-  [functions."*"]
   node_bundler = "esbuild"
 
+[functions.admin]
+  # Note: A 26-second timeout requires a Netlify Pro or Enterprise tier (default is 10s).
+  timeout = 26 
+
+# ==========================================
+# ROUTING (REDIRECTS & REWRITES)
+# ==========================================
+
+# 1. API Catch-all Rewrite
+# Maps requests from /api/myFunction to /.netlify/functions/myFunction
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+  force = true # Forces the rewrite even if a matching file exists in 'public'
+
+# 2. Admin Function Route
+# Maps your admin panel requests cleanly to your specific admin function
+[[redirects]]
+  from = "/admin/*"
+  to = "/.netlify/functions/admin"
+  status = 200
+  force = true
+
+# 3. SPA Fallback (Optional but Recommended)
+# If your 'public' folder hosts a Single Page Application (like React, Vue, or a standard frontend),
+# this passes unhandled URL routes to your index.html so client-side routing takes over.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  # We do not use 'force = true' here so that actual static assets (images, css) still load correctly.
+
+# ==========================================
+# SECURITY HEADERS
+# ==========================================
+
 [[headers]]
-for = "/*"
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    
+    # Uncomment if your mobile app needs to make cross-origin requests to this server
+    # Access-Control-Allow-Origin = "*"
 
   [headers.values]
   X-Frame-Options = "SAMEORIGIN"
