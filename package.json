@@ -4,20 +4,22 @@
   "description": "Yaard marketplace backend — Netlify serverless functions",
   "type": "module",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=18.0.0"
   },
   "scripts": {
     "dev": "netlify dev",
     "build": "echo 'No build step required for Netlify Functions (ESM)'",
-    "lint": "eslint netlify/functions shared --ext .js",
+    "lint": "eslint netlify/functions shared",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@netlify/functions": "^2.6.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.3",
     "dotenv": "^16.4.5",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^6.9.13",
+    "paystack": "^2.0.1",
     "pg": "^8.11.5",
     "uuid": "^9.0.1"
   },
@@ -29,6 +31,7 @@
     "@types/pg": "^8.11.6",
     "@types/uuid": "^9.0.8",
     "eslint": "^9.3.0",
+    "netlify-cli": "^17.23.0",
     "typescript": "^5.4.5"
   }
 }
